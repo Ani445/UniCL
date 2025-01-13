@@ -255,7 +255,8 @@ def update_config(config, args):
     if args.use_checkpoint:
         config.TRAIN.USE_CHECKPOINT = True
     if args.amp_opt_level:
-        config.AMP_OPT_LEVEL = args.amp_opt_level
+        # config.AMP_OPT_LEVEL = args.amp_opt_level
+        config.AMP_OPT_LEVEL = "O0"
     if args.output:
         config.OUTPUT = args.output
     if args.tag:
