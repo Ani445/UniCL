@@ -214,6 +214,17 @@ _C.DEBUG_MODE = False
 # local rank for DistributedDataParallel, given by command line argument
 _C.LOCAL_RANK = 0
 
+_C.DATASET = CN()
+_C.DATASET.DATA_DIR = 'C:/Users/abesh/Downloads'
+_C.DATASET.NAME_LIST_DIR = 'datasets/voc'
+_C.DATASET.NUM_CLASSES = 21
+_C.DATASET.CROP_SIZE = 224
+_C.DATASET.RESIZE_RANGE = [512, 2048]
+_C.DATASET.RESCALE_RANGE = [0.5, 2.0]
+_C.DATASET.IGNORE_INDEX = 255
+_C.DATASET.SPLIT = 'train'
+_C.DATASET.PIN_MEMORY = True
+_C.DATASET.NUM_WORKERS = 8
 
 def _update_config_from_file(config, cfg_file):
     config.defrost()
@@ -267,6 +278,18 @@ def update_config(config, args):
         config.THROUGHPUT_MODE = True
     if args.debug:
         config.DEBUG_MODE = True
+        
+    if args.dataset == 'voc':
+        config.MODEL.NUM_CLASSES = 21
+    if args.dataset == 'coco':
+        config.MODEL.NUM_CLASSES = 91
+    if args.data_path:
+        config.DATASET.DATA_DIR = args.data_path
+    if args.name_list_path:
+        config.DATASET.NAME_LIST_DIR = args.name_list_path
+    
+    if args.unicl_model:
+        config.MODEL.PRETRAINED = args.unicl_model
 
     if config.DATA.DATASET == 'imagewoof':
         config.MODEL.NUM_CLASSES = 10

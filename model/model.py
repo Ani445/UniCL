@@ -97,7 +97,7 @@ class UniCLModel(nn.Module):
                         logger.info(f'=> init {k} from {pretrained}')
 
                     need_init_state_dict[k] = v
-        self.image_encoder.from_state_dict(image_encoder_state_dict, ['*'], verbose)
+        self.image_encoder.load_state_dict(image_encoder_state_dict, strict=False)
         self.load_state_dict(need_init_state_dict, strict=False)
 
     @torch.jit.ignore
@@ -170,9 +170,13 @@ class UniCLModel(nn.Module):
         return features_image, features_text, T
 
 
-def build_unicl_model(config, **kwargs):
+def build_unicl_model(config, args=None, **kwargs):
     model = UniCLModel(config)
 
-    model.from_pretrained(pretrained_path, config['MODEL']['PRETRAINED_LAYERS'], config['VERBOSE'])
+    model.from_pretrained(
+        pretrained=args.unicl_model,
+        pretrained_layers=[],
+        verbose=False
+    )
 
     return model
