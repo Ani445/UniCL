@@ -78,11 +78,9 @@ def test_unicl_classification(cfg, args):
     total_step = len(val_loader)
     matched = 0
     
-    for i, (img_name, image, label) in enumerate(val_loader):
-        image = image.cuda()
-        label = label.cuda()
-        print(image.size())
-        print(label.size())
+    for i, data in enumerate(val_loader):
+        print(data)
+        
         return
     #     with torch.no_grad():
     #         output = model(image)
