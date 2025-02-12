@@ -85,19 +85,18 @@ def test_unicl_classification(cfg, args):
         image = image.cuda()
         cls_label = cls_label.cuda()
         
-        print(image_name)
-        print(image.shape, cls_label.shape)
-        print(image, cls_label)
+        # print(image_name)
+        # print(image.shape, cls_label.shape)
+        # print(image, cls_label)
         
-        return
+        # return
         
-        # with torch.no_grad():
-        #     output = model(image)
-        #     output = F.interpolate(output, size=image.size()[2:], mode='bilinear', align_corners=True)
-        #     pred = torch.softmax(output, dim=1).argmax(0)
-        #     matched += (pred == label)
+        with torch.no_grad():
+            output = model(image)
+            pred = torch.softmax(output, dim=1).argmax(0)
+            matched += (pred == cls_label)
     
-    # print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
+    print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
         
 if __name__ == '__main__':
     args = parser.parse_args()
