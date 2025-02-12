@@ -172,15 +172,7 @@ class UniCLModel(nn.Module):
 
 def build_unicl_model(config, **kwargs):
     model = UniCLModel(config)
-    if config['MODEL']['PRETRAINED'] != '':
-        pretrained_path = config['MODEL']['PRETRAINED']
-        from ..Utils.Utils import is_valid_url, download_file
-        if is_valid_url(pretrained_path):
-            with tempfile.TemporaryDirectory() as tmp_path:
-                file_local_path = pathlib.Path(tmp_path) / 'base_model.pt'
-                download_file(pretrained_path, file_local_path)
-                model.from_pretrained(str(file_local_path), config['MODEL']['PRETRAINED_LAYERS'], config['VERBOSE'])
-        else:
-            model.from_pretrained(pretrained_path, config['MODEL']['PRETRAINED_LAYERS'], config['VERBOSE'])
+
+    model.from_pretrained(pretrained_path, config['MODEL']['PRETRAINED_LAYERS'], config['VERBOSE'])
 
     return model
