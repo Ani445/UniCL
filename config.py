@@ -225,6 +225,7 @@ _C.DATASET.IGNORE_INDEX = 255
 _C.DATASET.SPLIT = 'train'
 _C.DATASET.PIN_MEMORY = True
 _C.DATASET.NUM_WORKERS = 8
+_C.DATASET.IMG_SIZE = [224, 224]
 
 def _update_config_from_file(config, cfg_file):
     config.defrost()

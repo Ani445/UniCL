@@ -5,6 +5,7 @@ import argparse
 from config import get_config
 from datasets import voc
 from model.model import build_unicl_model
+import matplotlib.pyplot as plt
 import yaml  # Add this import
 
 
@@ -44,15 +45,16 @@ parser.add_argument('--debug', action='store_true', help='Perform debug only')
 # distributed training
 parser.add_argument("--local_rank", type=int, default=0, help='local rank for DistributedDataParallel')
 
-def load_dataset(cfg, args):
+def load_cls_dataset(cfg, args):
     pass
-    val_dataset = voc.VOC12SegDataset(
+    val_dataset = voc.VOC12ClsDataset(
         root_dir=cfg.DATASET.DATA_DIR,
         name_list_dir=cfg.DATASET.NAME_LIST_DIR,
         split=cfg.DATASET.SPLIT,
         stage='val',
         ignore_index=cfg.DATASET.IGNORE_INDEX,
         num_classes=cfg.DATASET.NUM_CLASSES,
+        resize_shape=cfg.DATASET.IMG_SIZE,
     )
     return val_dataset
 
@@ -73,20 +75,27 @@ def test_unicl_classification(cfg, args):
     model = build_unicl_model(cfg, args)
     model = model.cuda()
     
-    val_dataset = load_dataset(cfg, args)
+    val_dataset = load_cls_dataset(cfg, args)
     val_loader = create_val_loader(val_dataset, cfg, args)
     total_step = len(val_loader)
     matched = 0
     
     for i, data in enumerate(val_loader):
-        print(data)
+        image_name, image, cls_label = data
+        image = image.cuda()
+        cls_label = cls_label.cuda()
+        
+        print(image_name)
+        print(image.shape, cls_label.shape)
+        print(image, cls_label)
         
         return
-    #     with torch.no_grad():
-    #         output = model(image)
-    #         output = F.interpolate(output, size=image.size()[2:], mode='bilinear', align_corners=True)
-    #         pred = torch.softmax(output, dim=1).argmax(0)
-    #         matched += (pred == label)
+        
+        # with torch.no_grad():
+        #     output = model(image)
+        #     output = F.interpolate(output, size=image.size()[2:], mode='bilinear', align_corners=True)
+        #     pred = torch.softmax(output, dim=1).argmax(0)
+        #     matched += (pred == label)
     
     # print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
         

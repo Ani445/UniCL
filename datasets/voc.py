@@ -1,3 +1,5 @@
+import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 from numpy.lib.utils import deprecate
 import torch
@@ -78,6 +80,7 @@ class VOC12ClsDataset(VOC12Dataset):
                  name_list_dir=None,
                  split='train',
                  stage='train',
+                 resize_shape=[224, 224],
                  resize_range=[512, 640],
                  rescale_range=[0.5, 2.0],
                  crop_size=512,
@@ -89,6 +92,7 @@ class VOC12ClsDataset(VOC12Dataset):
 
         super().__init__(root_dir, name_list_dir, split, stage)
 
+        self.resize_shape = resize_shape
         self.aug = aug
         self.ignore_index = ignore_index
         self.resize_range = resize_range
@@ -107,6 +111,13 @@ class VOC12ClsDataset(VOC12Dataset):
         return len(self.name_list)
 
     def __transforms(self, image):
+        
+        plt.imshow(image)
+        plt.show()
+        
+        # image shape: (H, W, C)
+        image = cv2.resize(image, (224, 224))
+        
         img_box = None
         if self.aug:
             image = np.array(image)
@@ -132,14 +143,18 @@ class VOC12ClsDataset(VOC12Dataset):
                     ignore_index=self.ignore_index)
         '''
         if self.stage != "train":
-            image = transforms.img_resize_short(image, min_size=min(self.resize_range))
         '''
+        
         image = transforms.normalize_img(image)
         # image = self.normalize(image)
         # image = image.numpy()
         
+        # print('image', image.shape)
         ## to chw
         image = np.transpose(image, (2, 0, 1))
+        
+        #resize image to 224x224
+        print('image', image.shape)
 
         return image, img_box
 
