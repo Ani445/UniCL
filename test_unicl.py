@@ -22,7 +22,7 @@ parser.add_argument(
 )
 
 # easy config modification
-parser.add_argument('--batch-size', type=int, help="batch size for single GPU")
+parser.add_argument('--batch-size', type=int, default=4, help="batch size for single GPU")
 parser.add_argument('--dataset', type=str, default='imagenet', help='dataset name')       
 parser.add_argument('--data-path', type=str, help='path to dataset')
 parser.add_argument('--name-list-path', type=str, help='path to name list')
@@ -64,7 +64,7 @@ def load_cls_dataset(cfg, args):
 def create_val_loader(val_dataset, cfg, args):
     val_loader = DataLoader(
         val_dataset,
-        batch_size=1,
+        batch_size=cfg.DATASET.BATCH_SIZE,
         shuffle=False,
         num_workers=cfg.DATASET.NUM_WORKERS,
         pin_memory=False,
@@ -88,6 +88,7 @@ def test_unicl_classification(cfg, args):
         if i > 0:
             break
         image_name, _, image, cls_label = data # image_name, ori_image, image, cls_label
+        print(image.shape)
         image = image.cuda()
         cls_label = cls_label.cuda()
         
@@ -113,8 +114,8 @@ def test_unicl_classification(cfg, args):
             logits_per_image = T * image_features @ text_features.t()
             print('logits_per_image:', logits_per_image)
             
-            # probs = logits_per_image.softmax(dim=-1)
-            # print(probs)
+            probs = torch.sigmoid(logits_per_image)
+            print(probs)
             
             # cls_pred = probs.argmax(dim=-1).item()
             # print('Predicted:', cls_pred)

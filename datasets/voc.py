@@ -111,7 +111,7 @@ class VOC12ClsDataset(VOC12Dataset):
         return len(self.name_list)
 
     def __transforms(self, image):
-        # image shape: (H, W, C)
+        print('image', image.size)
         image = cv2.resize(image, (224, 224))
         
         img_box = None

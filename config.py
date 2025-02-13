@@ -225,6 +225,7 @@ _C.DATASET.IGNORE_INDEX = 255
 _C.DATASET.SPLIT = 'train'
 _C.DATASET.PIN_MEMORY = True
 _C.DATASET.NUM_WORKERS = 8
+_C.DATA.BATCH_SIZE = 128
 _C.DATASET.IMG_SIZE = [224, 224]
 
 def _update_config_from_file(config, cfg_file):
@@ -251,7 +252,7 @@ def update_config(config, args):
 
     # merge from specific arguments
     if args.batch_size:
-        config.DATA.BATCH_SIZE = args.batch_size
+        config.DATASET.BATCH_SIZE = args.batch_size
     if args.dataset:
         config.DATA.DATASET = args.dataset            
     if args.data_path:
