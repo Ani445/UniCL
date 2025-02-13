@@ -111,14 +111,12 @@ class VOC12ClsDataset(VOC12Dataset):
         return len(self.name_list)
 
     def __transforms(self, image):
-        orininal_image = image.copy()
         # image shape: (H, W, C)
         image = cv2.resize(image, (224, 224))
         
         img_box = None
         if self.aug:
             image = np.array(image)
-            # print('image', image.shape)
             '''
             if self.resize_range: 
                 image, label = transforms.random_resize(
@@ -149,9 +147,6 @@ class VOC12ClsDataset(VOC12Dataset):
         # print('image', image.shape)
         ## to chw
         image = np.transpose(image, (2, 0, 1))
-        
-        #resize image to 224x224
-        print('image', image.shape)
 
         return image, img_box
 
