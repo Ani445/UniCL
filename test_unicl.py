@@ -99,7 +99,11 @@ def test_unicl_classification(cfg, args):
         
         with torch.no_grad():
             text_inputs = tokenizer(
-                ["a photo of an cat"],
+                ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
+                   'bus', 'car', 'cat', 'chair', 'cow',
+                   'diningtable', 'dog', 'horse', 'motorbike', 'person',
+                   'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor',
+                   ],
                 max_length=77,         # Set the maximum length to match the model's expectation
                 padding="max_length",  # Pad the sequence to the maximum length
                 truncation=True,       # Truncate the sequence if it's longer than max_length
@@ -107,8 +111,13 @@ def test_unicl_classification(cfg, args):
             )
             image_features, text_features, T = model(image, text_inputs.to(image.device))
             logits_per_image = T * image_features @ text_features.t()
-            probs = logits_per_image.softmax(dim=-1)
-            print(probs)
+            print('logits_per_image:', logits_per_image)
+            
+            # probs = logits_per_image.softmax(dim=-1)
+            # print(probs)
+            
+            # cls_pred = probs.argmax(dim=-1).item()
+            # print('Predicted:', cls_pred)
             
     
     # print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
