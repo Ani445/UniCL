@@ -6,7 +6,9 @@ from config import get_config
 from datasets import voc
 from model.model import build_unicl_model
 import matplotlib.pyplot as plt
-import yaml  # Add this import
+import yaml
+
+from model.text_encoder.build import build_tokenizer  # Add this import
 
 
 parser = argparse.ArgumentParser()
@@ -74,6 +76,8 @@ def test_unicl_classification(cfg, args):
     
     model = build_unicl_model(cfg, args)
     model = model.cuda()
+    conf_lang_encoder = cfg['MODEL']['TEXT_ENCODER']
+    tokenizer = build_tokenizer(conf_lang_encoder)
     
     val_dataset = load_cls_dataset(cfg, args)
     val_loader = create_val_loader(val_dataset, cfg, args)
@@ -81,7 +85,9 @@ def test_unicl_classification(cfg, args):
     matched = 0
     
     for i, data in enumerate(val_loader):
-        image_name, image, cls_label = data
+        if i > 0:
+            break
+        image_name, _, image, cls_label = data # image_name, ori_image, image, cls_label
         image = image.cuda()
         cls_label = cls_label.cuda()
         
@@ -92,11 +98,20 @@ def test_unicl_classification(cfg, args):
         # return
         
         with torch.no_grad():
-            output = model(image)
-            pred = torch.softmax(output, dim=1).argmax(0)
-            matched += (pred == cls_label)
+            text_inputs = tokenizer(
+                ["a photo of an cat"],
+                max_length=77,         # Set the maximum length to match the model's expectation
+                padding="max_length",  # Pad the sequence to the maximum length
+                truncation=True,       # Truncate the sequence if it's longer than max_length
+                return_tensors="pt"    # Return PyTorch tensors
+            )
+            image_features, text_features, T = model(image, text_inputs.to(image.device))
+            logits_per_image = T * image_features @ text_features.t()
+            probs = logits_per_image.softmax(dim=-1)
+            print(probs)
+            
     
-    print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
+    # print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
         
 if __name__ == '__main__':
     args = parser.parse_args()
