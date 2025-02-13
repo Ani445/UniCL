@@ -111,10 +111,7 @@ class VOC12ClsDataset(VOC12Dataset):
         return len(self.name_list)
 
     def __transforms(self, image):
-        
-        plt.imshow(image)
-        plt.show()
-        
+        orininal_image = image.copy()
         # image shape: (H, W, C)
         image = cv2.resize(image, (224, 224))
         
@@ -185,14 +182,16 @@ class VOC12ClsDataset(VOC12Dataset):
 #         image = Resize((new_height, new_width), interpolation=BICUBIC)(image)
 #         image = image.convert("RGB")
 
+        original_image = image.copy()
+
         image, img_box = self.__transforms(image=image)
 
         cls_label = self.label_list[img_name]
 
         if self.aug:
-            return img_name, image, cls_label, img_box
+            return img_name, original_image, image, cls_label, img_box
         else:
-            return img_name, image, cls_label
+            return img_name, original_image, image, cls_label
 
 
 class VOC12SegDataset(VOC12Dataset):
