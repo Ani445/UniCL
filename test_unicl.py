@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import yaml
 import torch.nn as nn
 import logging
+import logging
 
 from model.text_encoder.build import build_tokenizer  # Add this import
 
