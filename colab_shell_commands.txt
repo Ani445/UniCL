@@ -1,6 +1,3 @@
-conda install pytorch==1.7.1 torchvision==0.8.2 cudatoolkit=10.1 -c pytorch -c nvidia
-
-pip install -r requirements.txt
 
 python -W ignore test_unicl.py `
 --cfg 'configs/unicl_swin_tiny.yaml' `
