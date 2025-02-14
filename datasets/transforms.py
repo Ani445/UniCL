@@ -5,13 +5,13 @@ from PIL import Image
 import mmcv
 import imageio
 
-def normalize_img(img, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+def normalize_img(img, mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375]):
     imgarr = np.asarray(img)
     proc_img = np.empty_like(imgarr, np.float32)
 
-    proc_img[..., 0] = (imgarr[..., 0] / 255.0 - mean[0]) / std[0]  # Normalize R channel
-    proc_img[..., 1] = (imgarr[..., 1] / 255.0 - mean[1]) / std[1]  # Normalize G channel
-    proc_img[..., 2] = (imgarr[..., 2] / 255.0 - mean[2]) / std[2]  # Normalize B channel
+    proc_img[..., 0] = (imgarr[..., 0] - mean[0]) / std[0]
+    proc_img[..., 1] = (imgarr[..., 1] - mean[1]) / std[1]
+    proc_img[..., 2] = (imgarr[..., 2] - mean[2]) / std[2]
     return proc_img
 
 # def normalize_img(img, mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]):
