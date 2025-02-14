@@ -88,7 +88,7 @@ class UniCLModel(nn.Module):
             k: v for k, v in pretrained_dict['model'].items()
             if k in model_dict.keys()
         }
-        logger.info(pretrained_dict)
+        
         need_init_state_dict = {}
         image_encoder_state_dict = {}
         for k, v in pretrained_dict.items():

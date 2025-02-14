@@ -108,7 +108,7 @@ def register_hooks(model:UniCLModel):
 
 def test_unicl_classification(cfg, args):
     
-    model = build_unicl_model(cfg, args, verbose=True)
+    model = build_unicl_model(cfg, args)
     model = model.cuda()
     
     register_hooks(model)  # Register hooks to capture outputs
@@ -121,10 +121,14 @@ def test_unicl_classification(cfg, args):
     total_step = len(val_loader)
     matched = 0
     
+    
+    
+    model.eval()
+    
     for i, data in enumerate(val_loader):
         if i > 0:
             break
-        image_name, _, image, cls_label = data # image_name, ori_image, image, cls_label
+        image_name, image, cls_label = data # image_name, ori_image, image, cls_label
         print(image_name)
         image = image.cuda()
         cls_label = cls_label.cuda()
@@ -154,6 +158,10 @@ def test_unicl_classification(cfg, args):
                     'a photo of a diningtable', 'a photo of a dog', 'a photo of a horse', 'a photo of a motorbike', 'a photo of a person',
                     'a photo of a pottedplant', 'a photo of a sheep', 'a photo of a sofa', 'a photo of a train', 'a photo of a tvmonitor',
                     ],
+                # [
+                #     'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'
+                # ]
+                # ,
                 max_length=77,         # Set the maximum length to match the model's expectation
                 padding="max_length",  # Pad the sequence to the maximum length
                 truncation=True,       # Truncate the sequence if it's longer than max_length
@@ -165,7 +173,8 @@ def test_unicl_classification(cfg, args):
             
             probs = torch.sigmoid(logits_per_image)
             print('probs:', probs)
-            print(torch.argmax(probs, dim=-1))
+            print(probs.round())
+            print(cls_label)
         
         # print("///////////////////////////////////////")
         # print("///////////////////////////////////////")
