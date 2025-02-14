@@ -68,19 +68,27 @@ class UniCLModel(nn.Module):
 
         return model_dict_updated
 
-    def from_pretrained(self, pretrained='', pretrained_layers=[], verbose=True):
+    def from_pretrained(self, pretrained='', pretrained_layers=['*'], verbose=True):
         if not os.path.isfile(pretrained):
             logger.warning(f'=> Pretrained model ({pretrained}) is not a file, skip init weight')
             return
 
         pretrained_dict = torch.load(pretrained, map_location='cpu')
+
         logger.info(f'=> Loading pretrained model {pretrained}')
         pretrained_dict = self._convert_old_weights(pretrained_dict)
         model_dict = self.state_dict()
+        
+        # logger.info(model_dict.keys()[:3])
+        # for key in model_dict.keys():
+        #     if key not in pretrained_dict.keys():
+        #         logger.info(f"Key not in pretrained_dict: {key}")
+        
         pretrained_dict = {
-            k: v for k, v in pretrained_dict.items()
+            k: v for k, v in pretrained_dict['model'].items()
             if k in model_dict.keys()
         }
+        logger.info(pretrained_dict)
         need_init_state_dict = {}
         image_encoder_state_dict = {}
         for k, v in pretrained_dict.items():
@@ -92,6 +100,8 @@ class UniCLModel(nn.Module):
             if need_init:
                 if k.startswith('image_encoder.'):
                     image_encoder_state_dict[k] = v
+                    if verbose:
+                        logger.info(f'=> init {k} from {pretrained}')
                 else:
                     if verbose:
                         logger.info(f'=> init {k} from {pretrained}')
@@ -170,13 +180,13 @@ class UniCLModel(nn.Module):
         return features_image, features_text, T
 
 
-def build_unicl_model(config, args=None, **kwargs):
+def build_unicl_model(config, args=None, verbose=False, **kwargs):
     model = UniCLModel(config)
 
     model.from_pretrained(
         pretrained=args.unicl_model,
-        pretrained_layers=[],
-        verbose=False
+        pretrained_layers=['*'],
+        verbose=verbose
     )
 
     return model
