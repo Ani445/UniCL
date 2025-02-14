@@ -8,6 +8,7 @@ from model.model import UniCLModel, build_unicl_model
 import matplotlib.pyplot as plt
 import yaml
 import torch.nn as nn
+import logging
 
 from model.text_encoder.build import build_tokenizer  # Add this import
 
@@ -45,6 +46,8 @@ parser.add_argument('--throughput', action='store_true', help='Test throughput o
 parser.add_argument('--debug', action='store_true', help='Perform debug only')
 
 parser.add_argument("--local_rank", type=int, default=0, help='local rank for DistributedDataParallel')
+
+logger = logging.getLogger(__name__)
 
 def load_cls_dataset(cfg, args):
     val_dataset = voc.VOC12ClsDataset(
