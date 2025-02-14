@@ -4,9 +4,10 @@ from torch.utils.data import DataLoader
 import argparse
 from config import get_config
 from datasets import voc
-from model.model import build_unicl_model
+from model.model import UniCLModel, build_unicl_model
 import matplotlib.pyplot as plt
 import yaml
+import torch.nn as nn
 
 from model.text_encoder.build import build_tokenizer  # Add this import
 
@@ -21,7 +22,6 @@ parser.add_argument(
     nargs='+',
 )
 
-# easy config modification
 parser.add_argument('--batch-size', type=int, default=4, help="batch size for single GPU")
 parser.add_argument('--dataset', type=str, default='imagenet', help='dataset name')       
 parser.add_argument('--data-path', type=str, help='path to dataset')
@@ -44,11 +44,9 @@ parser.add_argument('--eval', action='store_true', help='Perform evaluation only
 parser.add_argument('--throughput', action='store_true', help='Test throughput only')
 parser.add_argument('--debug', action='store_true', help='Perform debug only')
 
-# distributed training
 parser.add_argument("--local_rank", type=int, default=0, help='local rank for DistributedDataParallel')
 
 def load_cls_dataset(cfg, args):
-    pass
     val_dataset = voc.VOC12ClsDataset(
         root_dir=cfg.DATASET.DATA_DIR,
         name_list_dir=cfg.DATASET.NAME_LIST_DIR,
@@ -72,10 +70,29 @@ def create_val_loader(val_dataset, cfg, args):
     )
     return val_loader
 
+all_layer_image_features = []
+
+def hook_fn(module, input, output):
+    all_layer_image_features.append(output)
+
+def register_hooks(model:UniCLModel):
+    for layer in model.image_encoder.layers:
+        for block in layer.blocks:
+           nn.Module.register_forward_hook(block, hook_fn)
+
+
+
+########################################################################################
+# Test UniCL Classification
+########################################################################################
+
 def test_unicl_classification(cfg, args):
     
     model = build_unicl_model(cfg, args)
     model = model.cuda()
+    
+    register_hooks(model)  # Register hooks to capture outputs
+    
     conf_lang_encoder = cfg['MODEL']['TEXT_ENCODER']
     tokenizer = build_tokenizer(conf_lang_encoder)
     
@@ -92,19 +109,31 @@ def test_unicl_classification(cfg, args):
         image = image.cuda()
         cls_label = cls_label.cuda()
         
+        print("#########################")
+        print("printing model parameters")
+        for i, (name, param) in enumerate(model.named_parameters()):
+            if i > 15:
+                break
+            print(i, ">>>", name, param)
+        print("#########################")
+        
         # print(image_name)
         # print(image.shape, cls_label.shape)
         # print(image, cls_label)
         
         # return
         
+        print("*****************************")
+        print("*****************************")
+        print("classifying image")
+        
         with torch.no_grad():
             text_inputs = tokenizer(
                 ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
-                   'bus', 'car', 'cat', 'chair', 'cow',
-                   'diningtable', 'dog', 'horse', 'motorbike', 'person',
-                   'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor',
-                   ],
+                    'bus', 'car', 'cat', 'chair', 'cow',
+                    'diningtable', 'dog', 'horse', 'motorbike', 'person',
+                    'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor',
+                    ],
                 max_length=77,         # Set the maximum length to match the model's expectation
                 padding="max_length",  # Pad the sequence to the maximum length
                 truncation=True,       # Truncate the sequence if it's longer than max_length
@@ -116,10 +145,12 @@ def test_unicl_classification(cfg, args):
             
             probs = torch.sigmoid(logits_per_image)
             print(probs)
-            
-            # cls_pred = probs.argmax(dim=-1).item()
-            # print('Predicted:', cls_pred)
-            
+        
+        print("///////////////////////////////////////")
+        print("///////////////////////////////////////")
+        print('printing all_layer_image_features')
+        for idx, output in enumerate(all_layer_image_features):
+            print(f"Output from block {idx}: {output.shape}")
     
     # print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
         
