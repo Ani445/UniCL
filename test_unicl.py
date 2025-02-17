@@ -13,6 +13,116 @@ import logging
 
 from model.text_encoder.build import build_tokenizer  # Add this import
 
+MY_CLASSES = [
+    'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'
+]
+
+TEMPLATES = [
+    '{}.',
+    'a photo of a {}.',
+    'a bad photo of a {}.',
+    'a photo of many {}.',
+    'a sculpture of a {}.',
+    'a photo of the hard to see {}.',
+    'a low resolution photo of the {}.',
+    'a rendering of a {}.',
+    'graffiti of a {}.',
+    'a bad photo of the {}.',
+    'a cropped photo of the {}.',
+    'a tattoo of a {}.',
+    'the embroidered {}.',
+    'a photo of a hard to see {}.',
+    'a bright photo of a {}.',
+    'a photo of a clean {}.',
+    'a photo of a dirty {}.',
+    'a dark photo of the {}.',
+    'a drawing of a {}.',
+    'a photo of my {}.',
+    'the plastic {}.',
+    'a photo of the cool {}.',
+    'a close-up photo of a {}.',
+    'a black and white photo of the {}.',
+    'a painting of the {}.',
+    'a painting of a {}.',
+    'a pixelated photo of the {}.',
+    'a sculpture of the {}.',
+    'a bright photo of the {}.',
+    'a cropped photo of a {}.',
+    'a plastic {}.',
+    'a photo of the dirty {}.',
+    'a jpeg corrupted photo of a {}.',
+    'a blurry photo of the {}.',
+    'a photo of the {}.',
+    'a good photo of the {}.',
+    'a rendering of the {}.',
+    'a {} in a video game.',
+    'a photo of one {}.',
+    'a doodle of a {}.',
+    'a close-up photo of the {}.',
+    'a photo of a {}.',
+    'the origami {}.',
+    'the {} in a video game.',
+    'a sketch of a {}.',
+    'a doodle of the {}.',
+    'a origami {}.',
+    'a low resolution photo of a {}.',
+    'the toy {}.',
+    'a rendition of the {}.',
+    'a photo of the clean {}.',
+    'a photo of a large {}.',
+    'a rendition of a {}.',
+    'a photo of a nice {}.',
+    'a photo of a weird {}.',
+    'a blurry photo of a {}.',
+    'a cartoon {}.',
+    'art of a {}.',
+    'a sketch of the {}.',
+    'a embroidered {}.',
+    'a pixelated photo of a {}.',
+    'itap of the {}.',
+    'a jpeg corrupted photo of the {}.',
+    'a good photo of a {}.',
+    'a plushie {}.',
+    'a photo of the nice {}.',
+    'a photo of the small {}.',
+    'a photo of the weird {}.',
+    'the cartoon {}.',
+    'art of the {}.',
+    'a drawing of the {}.',
+    'a photo of the large {}.',
+    'a black and white photo of a {}.',
+    'the plushie {}.',
+    'a dark photo of a {}.',
+    'itap of a {}.',
+    'graffiti of the {}.',
+    'a toy {}.',
+    'itap of my {}.',
+    'a photo of a cool {}.',
+    'a photo of a small {}.',
+    'a tattoo of the {}.',
+]
+
+def get_text_embeddings(tokenizer, model:UniCLModel, device):
+    all_embeddings = []
+
+    for cls in MY_CLASSES:
+        text_input = tokenizer(
+            [
+                template.format(cls) for template in TEMPLATES
+            ],
+            max_length=77,         # Set the maximum length to match the model's expectation
+            padding="max_length",  # Pad the sequence to the maximum length
+            truncation=True,       # Truncate the sequence if it's longer than max_length
+            return_tensors="pt"    # Return PyTorch tensors
+        )
+        with torch.no_grad():
+            text_features = model.encode_text(text_input.to(device))
+        text_features = text_features.mean(dim=0)
+        text_features /= text_features.norm()
+        all_embeddings.append(text_features)
+
+    return torch.stack(all_embeddings, dim=0)
+
 def setup_logger(filename='test.log'):
     ## setup logger
     logFormatter = logging.Formatter('%(asctime)s - %(filename)s - %(levelname)s: %(message)s')
@@ -121,12 +231,15 @@ def test_unicl_classification(cfg, args):
     total_step = len(val_loader)
     matched = 0
     
-    
+    text_embeddings = get_text_embeddings(tokenizer, model, 'cuda')
+    logit_scale = model.logit_scale.exp()
     
     model.eval()
     
     for i, data in enumerate(val_loader):
-        if i > 0:
+        if i <= 1:
+            continue
+        if i > 2:
             break
         image_name, image, cls_label = data # image_name, ori_image, image, cls_label
         print(image_name)
@@ -152,29 +265,17 @@ def test_unicl_classification(cfg, args):
         # print("classifying image")
         
         with torch.no_grad():
-            text_inputs = tokenizer(
-                ['a photo of a aeroplane', 'a photo of a bicycle', 'a photo of a bird', 'a photo of a boat', 'a photo of a bottle',
-                    'a photo of a bus', 'a photo of a car', 'a photo of a cat', 'a photo of a chair', 'a photo of a cow',
-                    'a photo of a diningtable', 'a photo of a dog', 'a photo of a horse', 'a photo of a motorbike', 'a photo of a person',
-                    'a photo of a pottedplant', 'a photo of a sheep', 'a photo of a sofa', 'a photo of a train', 'a photo of a tvmonitor',
-                    ],
-                # [
-                #     'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'
-                # ]
-                # ,
-                max_length=77,         # Set the maximum length to match the model's expectation
-                padding="max_length",  # Pad the sequence to the maximum length
-                truncation=True,       # Truncate the sequence if it's longer than max_length
-                return_tensors="pt"    # Return PyTorch tensors
-            )
-            image_features, text_features, T = model(image, text_inputs.to(image.device))
-            logits_per_image = T * image_features @ text_features.t()
+            image_features = model.encode_image(image)
+
+            logits_per_image = logit_scale * image_features @ text_embeddings.t()
             print('logits_per_image:', logits_per_image)
             
-            probs = torch.sigmoid(logits_per_image)
-            print('probs:', probs)
-            print(probs.round())
-            print(cls_label)
+            # get the top 5 classes
+
+            tops = torch.topk(logits_per_image, 5, dim=1)
+            print('tops:', tops)
+
+            print(torch.where(cls_label.view(-1, 1)  == 1))
         
         # print("///////////////////////////////////////")
         # print("///////////////////////////////////////")
@@ -191,3 +292,25 @@ if __name__ == '__main__':
     # print(args)
     # print(cfg)
     test_unicl_classification(cfg, args)
+
+
+# 0: aeroplane
+# 1: bicycle
+# 2: bird
+# 3: boat
+# 4: bottle
+# 5: bus
+# 6: car
+# 7: cat
+# 8: chair
+# 9: cow
+# 10: diningtable
+# 11: dog
+# 12: horse
+# 13: motorbike
+# 14: person
+# 15: pottedplant
+# 16: sheep
+# 17: sofa
+# 18: train
+# 19: tvmonitor

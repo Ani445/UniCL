@@ -298,7 +298,7 @@ def throughput(data_loader, model, logger):
         images = images.cuda(non_blocking=True)
         batch_size = images.shape[0]
         for i in range(50):
-            model(images)
+            model(images) 
         torch.cuda.synchronize()
         logger.info(f"throughput averaged with 30 times")
         tic1 = time.time()
