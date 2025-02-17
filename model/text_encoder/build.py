@@ -16,7 +16,7 @@ def build_lang_encoder(config_encoder, tokenizer, verbose, **kwargs):
     return lang_encoders(model_name)(config_encoder, tokenizer, verbose, **kwargs)
 
 
-def build_tokenizer(config_encoder):
+def build_tokenizer(config_encoder) -> CLIPTokenizer:
     tokenizer = None
     os.environ['TOKENIZERS_PARALLELISM'] = 'true'
     if config_encoder['TOKENIZER'] == 'clip':

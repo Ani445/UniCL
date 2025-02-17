@@ -133,7 +133,7 @@ class Transformer(nn.Module):
         elif isinstance(m, (nn.LayerNorm, nn.BatchNorm2d)):
             nn.init.constant_(m.bias, 0)
 
-    def load_pretrained(self, pretrained='', pretrained_layers=[], verbose=True):
+    def load_pretrained(self, pretrained='', pretrained_layers=['*'], verbose=True):
         if os.path.isfile(pretrained):
             pretrained_dict = torch.load(pretrained, map_location='cpu')
             logging.info(f'=> loading pretrained model {pretrained}')
@@ -154,7 +154,8 @@ class Transformer(nn.Module):
 
                     need_init_state_dict[k] = v
             self.load_state_dict(need_init_state_dict, strict=False)
-
+        else:
+            logging.warning(f'=> pretrained model ({pretrained}) is not a file, skip init weight')
 
     @torch.jit.ignore
     def no_weight_decay(self):
@@ -189,6 +190,6 @@ def lang_encoder(config_encoder, tokenizer, verbose, **kwargs):
     )
 
     if config_encoder['LOAD_PRETRAINED']:
-        transformer.load_pretrained()
+        transformer.load_pretrained(pretrained_layers=['*'])
 
     return transformer

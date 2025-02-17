@@ -9,9 +9,25 @@ import matplotlib.pyplot as plt
 import yaml
 import torch.nn as nn
 import logging
+import logging
 
 from model.text_encoder.build import build_tokenizer  # Add this import
 
+def setup_logger(filename='test.log'):
+    ## setup logger
+    logFormatter = logging.Formatter('%(asctime)s - %(filename)s - %(levelname)s: %(message)s')
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    fHandler = logging.FileHandler(filename, mode='w')
+    fHandler.setFormatter(logFormatter)
+    logger.addHandler(fHandler)
+
+    cHandler = logging.StreamHandler()
+    cHandler.setFormatter(logFormatter)
+    logger.addHandler(cHandler)
+    
+setup_logger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--cfg', type=str, default='configs/unicl_swin_tiny.yaml', help='config file path')
@@ -47,7 +63,8 @@ parser.add_argument('--debug', action='store_true', help='Perform debug only')
 
 parser.add_argument("--local_rank", type=int, default=0, help='local rank for DistributedDataParallel')
 
-logger = logging.getLogger(__name__)
+
+torch.manual_seed(0)
 
 def load_cls_dataset(cfg, args):
     val_dataset = voc.VOC12ClsDataset(
@@ -104,21 +121,25 @@ def test_unicl_classification(cfg, args):
     total_step = len(val_loader)
     matched = 0
     
+    
+    
+    model.eval()
+    
     for i, data in enumerate(val_loader):
         if i > 0:
             break
-        image_name, _, image, cls_label = data # image_name, ori_image, image, cls_label
-        print(image.shape)
+        image_name, image, cls_label = data # image_name, ori_image, image, cls_label
+        print(image_name)
         image = image.cuda()
         cls_label = cls_label.cuda()
         
-        print("#########################")
-        print("printing model parameters")
-        for i, (name, param) in enumerate(model.named_parameters()):
-            if i > 15:
-                break
-            print(i, ">>>", name, param)
-        print("#########################")
+        # print("#########################")
+        # print("printing model parameters")
+        # for i, (name, param) in enumerate(model.named_parameters()):
+        #     if i > 15:
+        #         break
+        #     print(i, ">>>", name, param)
+        # print("#########################")
         
         # print(image_name)
         # print(image.shape, cls_label.shape)
@@ -126,17 +147,21 @@ def test_unicl_classification(cfg, args):
         
         # return
         
-        print("*****************************")
-        print("*****************************")
-        print("classifying image")
+        # print("*****************************")
+        # print("*****************************")
+        # print("classifying image")
         
         with torch.no_grad():
             text_inputs = tokenizer(
-                ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
-                    'bus', 'car', 'cat', 'chair', 'cow',
-                    'diningtable', 'dog', 'horse', 'motorbike', 'person',
-                    'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor',
+                ['a photo of a aeroplane', 'a photo of a bicycle', 'a photo of a bird', 'a photo of a boat', 'a photo of a bottle',
+                    'a photo of a bus', 'a photo of a car', 'a photo of a cat', 'a photo of a chair', 'a photo of a cow',
+                    'a photo of a diningtable', 'a photo of a dog', 'a photo of a horse', 'a photo of a motorbike', 'a photo of a person',
+                    'a photo of a pottedplant', 'a photo of a sheep', 'a photo of a sofa', 'a photo of a train', 'a photo of a tvmonitor',
                     ],
+                # [
+                #     'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'
+                # ]
+                # ,
                 max_length=77,         # Set the maximum length to match the model's expectation
                 padding="max_length",  # Pad the sequence to the maximum length
                 truncation=True,       # Truncate the sequence if it's longer than max_length
@@ -147,13 +172,15 @@ def test_unicl_classification(cfg, args):
             print('logits_per_image:', logits_per_image)
             
             probs = torch.sigmoid(logits_per_image)
-            print(probs)
+            print('probs:', probs)
+            print(probs.round())
+            print(cls_label)
         
-        print("///////////////////////////////////////")
-        print("///////////////////////////////////////")
-        print('printing all_layer_image_features')
-        for idx, output in enumerate(all_layer_image_features):
-            print(f"Output from block {idx}: {output.shape}")
+        # print("///////////////////////////////////////")
+        # print("///////////////////////////////////////")
+        # print('printing all_layer_image_features')
+        # for idx, output in enumerate(all_layer_image_features):
+        #     print(f"Output from block {idx}: {output.shape}")
     
     # print('Accuracy:', matched / total_step * cfg.dataset.crop_size * cfg.dataset.crop_size)
         
