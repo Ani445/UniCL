@@ -106,9 +106,11 @@ class UniCLModel(nn.Module):
                     if verbose:
                         logger.info(f'=> init {k} from {pretrained}')
 
-                    need_init_state_dict[k] = v
+                need_init_state_dict[k] = v
         self.image_encoder.load_state_dict(image_encoder_state_dict, strict=False)
         self.load_state_dict(need_init_state_dict, strict=False)
+
+
 
     @torch.jit.ignore
     def no_weight_decay(self):
