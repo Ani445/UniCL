@@ -8,6 +8,8 @@ __pycache__/
 
 **/checkpoint/*
 
+output/
+
 # Distribution / packaging
 .Python
 build/

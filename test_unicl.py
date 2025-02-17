@@ -10,6 +10,7 @@ import yaml
 import torch.nn as nn
 import logging
 import logging
+from tqdm import tqdm
 
 from model.text_encoder.build import build_tokenizer  # Add this import
 
@@ -101,6 +102,31 @@ TEMPLATES = [
     'a photo of a small {}.',
     'a tattoo of the {}.',
 ]
+
+
+class_map = {
+    0: 'aeroplane',
+    1: 'bicycle',
+    2: 'bird',
+    3: 'boat',
+    4: 'bottle',
+    5: 'bus',
+    6: 'car',
+    7: 'cat',
+    8: 'chair',
+    9: 'cow',
+    10: 'diningtable',
+    11: 'dog',
+    12: 'horse',
+    13: 'motorbike',
+    14: 'person',
+    15: 'pottedplant',
+    16: 'sheep',
+    17: 'sofa',
+    18: 'train',
+    19: 'tvmonitor'
+}
+
 
 def get_text_embeddings(tokenizer, model:UniCLModel, device):
     all_embeddings = []
@@ -236,49 +262,36 @@ def test_unicl_classification(cfg, args):
     
     model.eval()
     
-    for i, data in enumerate(val_loader):
-        if i <= 1:
-            continue
-        if i > 2:
+    for i, data in enumerate(tqdm(val_loader, total=100, desc="Testing", ncols=100)):
+        if i > 100:
             break
         image_name, image, cls_label = data # image_name, ori_image, image, cls_label
-        print(image_name)
+        # print(image_name)
         image = image.cuda()
         cls_label = cls_label.cuda()
-        
-        # print("#########################")
-        # print("printing model parameters")
-        # for i, (name, param) in enumerate(model.named_parameters()):
-        #     if i > 15:
-        #         break
-        #     print(i, ">>>", name, param)
-        # print("#########################")
-        
-        # print(image_name)
-        # print(image.shape, cls_label.shape)
-        # print(image, cls_label)
-        
-        # return
-        
-        # print("*****************************")
-        # print("*****************************")
-        # print("classifying image")
         
         with torch.no_grad():
             image_features = model.encode_image(image)
 
             logits_per_image = logit_scale * image_features @ text_embeddings.t()
-            print('logits_per_image:', logits_per_image)
-            
-            # get the top 5 classes
 
-            tops = torch.topk(logits_per_image, 5, dim=1)
-            print('tops:', tops)
-
-            print(torch.where(cls_label.view(-1, 1)  == 1))
+        # print('logits_per_image:', logits_per_image)
         
+        # get the top 3 classes
+        tops = torch.topk(logits_per_image, 3, dim=1)
+
+        # Convert indices to class names
+        predicted_classes = [class_map[idx] for idx in tops.indices[0].tolist()]
+
+        # Load the image
+        img = plt.imread(f'C://Users/abesh/Downloads/archive/VOC2012/JPEGImages/{image_name[0].split("/")[-1]}.jpg')
+        plt.imshow(img)
+        plt.axis('off')
+        plt.title(f'Predicted: {predicted_classes}')
+        plt.savefig(f'output/{image_name[0].split("/")[-1]}')
+
         # print("///////////////////////////////////////")
-        # print("///////////////////////////////////////")
+        # print("///////////////////////////////////////")ko
         # print('printing all_layer_image_features')
         # for idx, output in enumerate(all_layer_image_features):
         #     print(f"Output from block {idx}: {output.shape}")
