@@ -215,7 +215,7 @@ TEMPLATES = [
 
 
 
-def get_text_embeddings(tokenizer, model: UniCLModel, device):
+def get_text_embeddings(tokenizer, model: UniCLModel, device = 'cuda', norm = True):
     all_embeddings = []
     for cls in MY_CLASSES:
         text_input = tokenizer(
@@ -225,12 +225,20 @@ def get_text_embeddings(tokenizer, model: UniCLModel, device):
             truncation=True,       # Truncate if longer than max_length
             return_tensors="pt"    # Return PyTorch tensors
         )
+        
         with torch.no_grad():
-            text_features = model.encode_text(text_input.to(device))
+            text_features = model.encode_text(text_input.to(device), norm=norm)
         text_features = text_features.mean(dim=0)
-        text_features /= text_features.norm()
+        if norm:
+            text_features /= text_features.norm()
         all_embeddings.append(text_features)
-    return torch.stack(all_embeddings, dim=0)
+
+        del text_input
+        del text_features
+        torch.cuda.empty_cache()
+
+    all_embeddings = torch.stack(all_embeddings, dim=0)
+    return all_embeddings
 
 def setup_logger(filename='test.log'):
     logFormatter = logging.Formatter('%(asctime)s - %(filename)s - %(levelname)s: %(message)s')

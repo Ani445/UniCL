@@ -93,7 +93,7 @@ def test_unicl_classification(cfg, args):
     val_loader = create_val_loader(val_dataset, cfg, args)
     
     # Precompute text embeddings (these are not used for GradCAM, so no gradient needed)
-    text_embeddings = get_text_embeddings(tokenizer, model, 'cuda')
+    text_embeddings = get_text_embeddings(tokenizer, model, norm=False)
     logit_scale = model.logit_scale.exp()
     
     # Switch to evaluation mode (but allow gradients for the image branch)
@@ -118,12 +118,13 @@ def test_unicl_classification(cfg, args):
     backward_handle = target_layer.register_backward_hook(gradcam_backward_hook)
     
     # Forward pass (do not use torch.no_grad here so that gradients can be computed)
-    image_features = model.encode_image(input_tensor)
-    logits_per_image = logit_scale * image_features @ text_embeddings.t()
+    image_features = model.encode_image(input_tensor, norm=False)
+    logits_per_image = image_features @ text_embeddings.t()
     # logits_per_image = image_features
     
+    print(logits_per_image)
 
-    score = logits_per_image[0, 8]
+    score = logits_per_image[0, torch.argmax(logits_per_image)]
     model.zero_grad()
     score.backward(retain_graph=True)
     
