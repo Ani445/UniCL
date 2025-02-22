@@ -67,6 +67,14 @@ def create_val_loader(val_dataset, cfg, args):
 # Global variables to store activations and gradients for GradCAM
 gradcam_activations = None
 gradcam_gradients = None
+feature_activations = []
+attn_activations = []
+
+def feature_forward_hook(module, input, output):
+    feature_activations.append(output)
+
+def attn_forward_hook(module, input, output):
+    attn_activations.append(output)
 
 def gradcam_forward_hook(module, input, output):
     global gradcam_activations
@@ -106,16 +114,23 @@ def test_unicl_classification(cfg, args):
     input_tensor = torchvision.transforms.Compose([
         torchvision.transforms.Resize((cfg.DATASET.IMG_SIZE[0], cfg.DATASET.IMG_SIZE[1])),
         torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225])
+        torchvision.transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+            )
     ])(image)
 
     input_tensor = input_tensor.unsqueeze(0).cuda()
     # cls_label = cls_label.cuda()
 
-    target_layer = model.image_encoder.layers[-1].blocks[-1].mlp
+    target_layer = model.image_encoder.layers[-1].blocks[-1]
     forward_handle = target_layer.register_forward_hook(gradcam_forward_hook)
     backward_handle = target_layer.register_backward_hook(gradcam_backward_hook)
+    
+    for layer in model.image_encoder.layers:
+        for block in layer.blocks:
+            block.register_forward_hook(feature_forward_hook)
+            block.attn.attn_drop.register_forward_hook(attn_forward_hook)
     
     # Forward pass (do not use torch.no_grad here so that gradients can be computed)
     image_features = model.encode_image(input_tensor, norm=False)
@@ -125,15 +140,16 @@ def test_unicl_classification(cfg, args):
     print(logits_per_image)
 
     score = logits_per_image[0, torch.argmax(logits_per_image)]
+    # score = logits_per_image.sum()
     model.zero_grad()
-    score.backward(retain_graph=True)
+    score.backward()
     
     # At this point gradcam_activations and gradcam_gradients are set by our hooks.
     # We assume gradcam_activations has shape (B, L, C) where L = H * W.
     B, L, C = gradcam_activations.shape
 
-    print(gradcam_activations)
-    print(gradcam_gradients)
+    # print(gradcam_activations)
+    # print(gradcam_gradients)
 
     H = W = int(L ** 0.5)  # Assumes a square feature map
     # Reshape activations and gradients to (B, C, H, W)
@@ -164,10 +180,21 @@ def test_unicl_classification(cfg, args):
     
     # Save the GradCAM overlay
     cv2.imwrite(f'output/gradcam_{image_name}', overlay)
+
+    print('Printing Intermediate Features')
+    for i, act in enumerate(feature_activations):
+        print(f'Layer {i}: {act.shape}')
+    
+    print('Printing Attention Weights')
+    for i, act in enumerate(attn_activations):
+        print(f'Layer {i}: {act.shape}')
     
     # Remove the hooks to avoid interference with future iterations
     forward_handle.remove()
     backward_handle.remove()
+    for layer in model.image_encoder.layers:
+        for block in layer.blocks:
+            block._forward_hooks.clear()
 
         
 if __name__ == '__main__':
