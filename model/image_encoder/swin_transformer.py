@@ -263,6 +263,8 @@ class SwinTransformerBlock(nn.Module):
             x = shifted_x
         x = x.view(B, H * W, C)
 
+        self.attention = x.clone()
+
         # FFN
         x = shortcut + self.drop_path(x)
         x = x + self.drop_path(self.mlp(self.norm2(x)))

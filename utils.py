@@ -11,6 +11,10 @@ import torch
 import torch.distributed as dist
 from timm.models.layers import trunc_normal_
 
+import logging
+
+from model.model import UniCLModel
+
 try:
     # noinspection PyUnresolvedReferences
     from apex import amp
@@ -96,3 +100,147 @@ def reduce_tensor(tensor):
     dist.all_reduce(rt, op=dist.ReduceOp.SUM)
     rt /= dist.get_world_size()
     return rt
+class_map = {
+    0: 'aeroplane',
+    1: 'bicycle',
+    2: 'bird',
+    3: 'boat',
+    4: 'bottle',
+    5: 'bus',
+    6: 'car',
+    7: 'cat',
+    8: 'chair',
+    9: 'cow',
+    10: 'diningtable',
+    11: 'dog',
+    12: 'horse',
+    13: 'motorbike',
+    14: 'person',
+    15: 'pottedplant',
+    16: 'sheep',
+    17: 'sofa',
+    18: 'train',
+    19: 'tvmonitor'
+}
+
+MY_CLASSES = [
+    'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 
+    'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'
+]
+
+TEMPLATES = [
+    '{}.',
+    'a photo of a {}.',
+    'a bad photo of a {}.',
+    'a photo of many {}.',
+    'a sculpture of a {}.',
+    'a photo of the hard to see {}.',
+    'a low resolution photo of the {}.',
+    'a rendering of a {}.',
+    'graffiti of a {}.',
+    'a bad photo of the {}.',
+    'a cropped photo of the {}.',
+    'a tattoo of a {}.',
+    'the embroidered {}.',
+    'a photo of a hard to see {}.',
+    'a bright photo of a {}.',
+    'a photo of a clean {}.',
+    'a photo of a dirty {}.',
+    'a dark photo of the {}.',
+    'a drawing of a {}.',
+    'a photo of my {}.',
+    'the plastic {}.',
+    'a photo of the cool {}.',
+    'a close-up photo of a {}.',
+    'a black and white photo of the {}.',
+    'a painting of the {}.',
+    'a painting of a {}.',
+    'a pixelated photo of the {}.',
+    'a sculpture of the {}.',
+    'a bright photo of the {}.',
+    'a cropped photo of a {}.',
+    'a plastic {}.',
+    'a photo of the dirty {}.',
+    'a jpeg corrupted photo of a {}.',
+    'a blurry photo of the {}.',
+    'a photo of the {}.',
+    'a good photo of the {}.',
+    'a rendering of the {}.',
+    'a {} in a video game.',
+    'a photo of one {}.',
+    'a doodle of a {}.',
+    'a close-up photo of the {}.',
+    'a photo of a {}.',
+    'the origami {}.',
+    'the {} in a video game.',
+    'a sketch of a {}.',
+    'a doodle of the {}.',
+    'a origami {}.',
+    'a low resolution photo of a {}.',
+    'the toy {}.',
+    'a rendition of the {}.',
+    'a photo of the clean {}.',
+    'a photo of a large {}.',
+    'a rendition of a {}.',
+    'a photo of a nice {}.',
+    'a photo of a weird {}.',
+    'a blurry photo of a {}.',
+    'a cartoon {}.',
+    'art of a {}.',
+    'a sketch of the {}.',
+    'a embroidered {}.',
+    'a pixelated photo of a {}.',
+    'itap of the {}.',
+    'a jpeg corrupted photo of the {}.',
+    'a good photo of a {}.',
+    'a plushie {}.',
+    'a photo of the nice {}.',
+    'a photo of the small {}.',
+    'a photo of the weird {}.',
+    'the cartoon {}.',
+    'art of the {}.',
+    'a drawing of the {}.',
+    'a photo of the large {}.',
+    'a black and white photo of a {}.',
+    'the plushie {}.',
+    'a dark photo of a {}.',
+    'itap of a {}.',
+    'graffiti of the {}.',
+    'a toy {}.',
+    'itap of my {}.',
+    'a photo of a cool {}.',
+    'a photo of a small {}.',
+    'a tattoo of the {}.',
+]
+
+
+
+def get_text_embeddings(tokenizer, model: UniCLModel, device):
+    all_embeddings = []
+    for cls in MY_CLASSES:
+        text_input = tokenizer(
+            [template.format(cls) for template in TEMPLATES],
+            max_length=77,         # Set the maximum length to match the model's expectation
+            padding="max_length",  # Pad the sequence to the maximum length
+            truncation=True,       # Truncate if longer than max_length
+            return_tensors="pt"    # Return PyTorch tensors
+        )
+        with torch.no_grad():
+            text_features = model.encode_text(text_input.to(device))
+        text_features = text_features.mean(dim=0)
+        text_features /= text_features.norm()
+        all_embeddings.append(text_features)
+    return torch.stack(all_embeddings, dim=0)
+
+def setup_logger(filename='test.log'):
+    logFormatter = logging.Formatter('%(asctime)s - %(filename)s - %(levelname)s: %(message)s')
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    fHandler = logging.FileHandler(filename, mode='w')
+    fHandler.setFormatter(logFormatter)
+    logger.addHandler(fHandler)
+    cHandler = logging.StreamHandler()
+    cHandler.setFormatter(logFormatter)
+    logger.addHandler(cHandler)
+    
+setup_logger()

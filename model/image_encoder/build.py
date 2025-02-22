@@ -7,7 +7,7 @@ def build_model(config):
     
     if "swin" in model_type:
         model = SwinTransformer(
-            num_classes=0,
+            num_classes=1000,
             img_size=config.IMG_SIZE,
             patch_size=config.SWIN.PATCH_SIZE,
             in_chans=config.SWIN.IN_CHANS,
