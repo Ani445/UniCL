@@ -89,26 +89,26 @@ class UniCLModel(nn.Module):
             if k in model_dict.keys()
         }
         
-        need_init_state_dict = {}
-        image_encoder_state_dict = {}
-        for k, v in pretrained_dict.items():
-            need_init = (
-                k.split('.')[0] in pretrained_layers
-                or pretrained_layers[0] == '*'
-            )
+        # need_init_state_dict = {}
+        # image_encoder_state_dict = {}
+        # for k, v in pretrained_dict.items():
+        #     need_init = (
+        #         k.split('.')[0] in pretrained_layers
+        #         or pretrained_layers[0] == '*'
+        #     )
 
-            # if need_init:
-            #     if k.startswith('image_encoder.'):
-            #         image_encoder_state_dict[k] = v
-            #         if verbose:
-            #             logger.info(f'=> init {k} from {pretrained}')
-            #     else:
-            #         if verbose:
-            #             logger.info(f'=> init {k} from {pretrained}')
+        #     # if need_init:
+        #     #     if k.startswith('image_encoder.'):
+        #     #         image_encoder_state_dict[k] = v
+        #     #         if verbose:
+        #     #             logger.info(f'=> init {k} from {pretrained}')
+        #     #     else:
+        #     #         if verbose:
+        #     #             logger.info(f'=> init {k} from {pretrained}')
 
-            need_init_state_dict[k] = v 
+        #     need_init_state_dict[k] = v 
 
-        self.load_state_dict(need_init_state_dict, strict=False)
+        self.load_state_dict(pretrained_dict, strict=False)
 
 
 

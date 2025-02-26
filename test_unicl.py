@@ -134,10 +134,17 @@ def test_unicl_classification(cfg, args):
     
     # Forward pass (do not use torch.no_grad here so that gradients can be computed)
     image_features = model.encode_image(input_tensor, norm=False)
-    logits_per_image = image_features @ text_embeddings.t()
-    # logits_per_image = image_features
+
+    image_features = image_features / image_features.norm(dim=1, keepdim=True)
+    text_embeddings = text_embeddings / text_embeddings.norm(dim=1, keepdim=True)
+    # cosine similarity as logits
+    logit_scale = model.logit_scale.exp()
+    logits_per_image = logit_scale * image_features @ text_embeddings.t()
+
+    # shape = [global_batch_size, global_batch_size]
+    logits_per_image = logits_per_image.softmax(dim=-1)
     
-    print(logits_per_image)
+    # print(logits_per_image)
 
     score = logits_per_image[0, torch.argmax(logits_per_image)]
     # score = logits_per_image.sum()
@@ -166,8 +173,9 @@ def test_unicl_classification(cfg, args):
     gradcam_map = (gradcam_map - gradcam_map_min) / (gradcam_map_max - gradcam_map_min + 1e-8)
     
     # Convert GradCAM map to a numpy array
-    gradcam_map_np = gradcam_map.cpu().detach().numpy()[0, 0]
+    gradcam_map_np = gradcam_map.cpu().detach().numpy()[0, 0].astype(np.float32)
     
+    print(gradcam_map_np)
     
     # Resize the GradCAM heatmap to match the original image dimensions
     heatmap = cv2.resize(gradcam_map_np, (image.width, image.height))
@@ -196,7 +204,7 @@ def test_unicl_classification(cfg, args):
         for block in layer.blocks:
             block._forward_hooks.clear()
 
-        
+
 if __name__ == '__main__':
     args = parser.parse_args()
     cfg = get_config(args)
