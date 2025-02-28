@@ -73,42 +73,46 @@ class UniCLModel(nn.Module):
             logger.warning(f'=> Pretrained model ({pretrained}) is not a file, skip init weight')
             return
 
-        pretrained_dict = torch.load(pretrained, map_location='cpu')
+        # pretrained_dict = torch.load(pretrained, map_location='cpu')['model']
 
+        # logger.info(f'=> Loading pretrained model {pretrained}')
+        # pretrained_dict = self._convert_old_weights(pretrained_dict)
+        # model_dict = self.state_dict()
+
+        # with open('parameters/model_parameters.txt', 'w') as f:
+        #     for key in model_dict.keys():
+        #         f.write(f"{key}\n")
+        
+        # with open('parameters/in1k_yfcc14m.txt', 'w') as f:
+        #     for key in pretrained_dict.keys():
+        #         f.write(f"{key}\n")
+        
+        pretrained_dict = torch.load(pretrained, map_location='cpu')['model']
         logger.info(f'=> Loading pretrained model {pretrained}')
         pretrained_dict = self._convert_old_weights(pretrained_dict)
         model_dict = self.state_dict()
-        
-        # logger.info(model_dict.keys()[:3])
-        # for key in model_dict.keys():
-        #     if key not in pretrained_dict.keys():
-        #         logger.info(f"Key not in pretrained_dict: {key}")
-        
         pretrained_dict = {
-            k: v for k, v in pretrained_dict['model'].items()
+            k: v for k, v in pretrained_dict.items()
             if k in model_dict.keys()
         }
-        
-        # need_init_state_dict = {}
-        # image_encoder_state_dict = {}
-        # for k, v in pretrained_dict.items():
-        #     need_init = (
-        #         k.split('.')[0] in pretrained_layers
-        #         or pretrained_layers[0] == '*'
-        #     )
+        need_init_state_dict = {}
+        image_encoder_state_dict = {}
+        for k, v in pretrained_dict.items():
+            need_init = (
+                k.split('.')[0] in pretrained_layers
+                or pretrained_layers[0] == '*'
+            )
 
-        #     # if need_init:
-        #     #     if k.startswith('image_encoder.'):
-        #     #         image_encoder_state_dict[k] = v
-        #     #         if verbose:
-        #     #             logger.info(f'=> init {k} from {pretrained}')
-        #     #     else:
-        #     #         if verbose:
-        #     #             logger.info(f'=> init {k} from {pretrained}')
+            if need_init:
+                if k.startswith('image_encoder.'):
+                    image_encoder_state_dict[k] = v
+                else:
+                    if verbose:
+                        logger.info(f'=> init {k} from {pretrained}')
 
-        #     need_init_state_dict[k] = v 
-
-        self.load_state_dict(pretrained_dict, strict=False)
+                need_init_state_dict[k] = v
+        self.load_state_dict(need_init_state_dict, strict=False)
+        self.image_encoder.load_state_dict(image_encoder_state_dict, strict=False)
 
 
 
@@ -129,10 +133,10 @@ class UniCLModel(nn.Module):
     def dtype(self):
         return self.logit_scale.dtype
 
-    def get_imnet_embeddings(self):
+    def get_imnet_embeddings(self, classes):
         templates = IMAGENET_DEFAULT_TEMPLATES
         clss_embeddings = []
-        for clss in IMAGENET_CLASSES:
+        for clss in classes:
             txts = [template.format(clss) for template in templates]
             
             tokens = self.tokenizer(
