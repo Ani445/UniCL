@@ -11,9 +11,11 @@ from model.model import build_unicl_model
 from model.text_encoder.build import build_tokenizer  # Add this import
 import cv2
 import numpy as np
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
-from utils import get_text_embeddings
+
+from utils import MY_CLASSES, get_text_embeddings
 
 
 
@@ -101,13 +103,14 @@ def test_unicl_classification(cfg, args):
     val_loader = create_val_loader(val_dataset, cfg, args)
     
     # Precompute text embeddings (these are not used for GradCAM, so no gradient needed)
-    text_embeddings = get_text_embeddings(tokenizer, model, norm=False)
+    with torch.no_grad():
+        text_embeddings = model.get_imnet_embeddings(MY_CLASSES)
     logit_scale = model.logit_scale.exp()
     
     # Switch to evaluation mode (but allow gradients for the image branch)
     
 
-    image_name = '2007_000364.jpg'
+    image_name = 'bike.jpg'
     image = Image.open(image_name).convert('RGB')
     
     # Preprocess the image
@@ -115,8 +118,8 @@ def test_unicl_classification(cfg, args):
         torchvision.transforms.Resize((cfg.DATASET.IMG_SIZE[0], cfg.DATASET.IMG_SIZE[1])),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
+            mean=IMAGENET_DEFAULT_MEAN,
+            std=IMAGENET_DEFAULT_STD
             )
     ])(image)
 
@@ -135,20 +138,23 @@ def test_unicl_classification(cfg, args):
     # Forward pass (do not use torch.no_grad here so that gradients can be computed)
     image_features = model.encode_image(input_tensor, norm=False)
 
-    image_features = image_features / image_features.norm(dim=1, keepdim=True)
-    text_embeddings = text_embeddings / text_embeddings.norm(dim=1, keepdim=True)
+    # image_features_norm = image_features / image_features.norm(dim=1, keepdim=True)
+    # text_embeddings_norm = text_embeddings / text_embeddings.norm(dim=1, keepdim=True)
     # cosine similarity as logits
     logit_scale = model.logit_scale.exp()
+    # logits_per_image = logit_scale * image_features @ text_embeddings.t()
     logits_per_image = logit_scale * image_features @ text_embeddings.t()
 
     # shape = [global_batch_size, global_batch_size]
-    logits_per_image = logits_per_image.softmax(dim=-1)
+    # logits_per_image = logits_per_image.softmax(dim=-1)
+
+    print(logits_per_image)
     
     print(logits_per_image)
 
-    # score = logits_per_image[0, torch.argmax(logits_per_image)]
+    pred = torch.argmax(logits_per_image)
     score = logits_per_image[0, 13]
-    print(score)
+    print(f'Predicted class: {MY_CLASSES[pred]} with score {score.item()}')
     # score = logits_per_image.sum()
     model.zero_grad()
     score.backward()
@@ -177,8 +183,6 @@ def test_unicl_classification(cfg, args):
     # Convert GradCAM map to a numpy array
     gradcam_map_np = gradcam_map.cpu().detach().numpy()[0, 0].astype(np.float32)
     
-    # print(gradcam_map_np)
-    
     # Resize the GradCAM heatmap to match the original image dimensions
     heatmap = cv2.resize(gradcam_map_np, (image.width, image.height))
     heatmap = np.uint8(255 * heatmap)
@@ -191,13 +195,13 @@ def test_unicl_classification(cfg, args):
     # Save the GradCAM overlay
     cv2.imwrite(f'output/gradcam_{image_name}', overlay)
 
-    print('Printing Intermediate Features')
-    for i, act in enumerate(feature_activations):
-        print(f'Layer {i}: {act.shape}')
+    # print('Printing Intermediate Features')
+    # for i, act in enumerate(feature_activations):
+    #     print(f'Layer {i}: {act.shape}')
     
-    print('Printing Attention Weights')
-    for i, act in enumerate(attn_activations):
-        print(f'Layer {i}: {act.shape}')
+    # print('Printing Attention Weights')
+    # for i, act in enumerate(attn_activations):
+    #     print(f'Layer {i}: {act.shape}')
     
     # Remove the hooks to avoid interference with future iterations
     forward_handle.remove()
