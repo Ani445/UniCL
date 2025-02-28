@@ -107,7 +107,7 @@ def test_unicl_classification(cfg, args):
     # Switch to evaluation mode (but allow gradients for the image branch)
     
 
-    image_name = 'cat.jpg'
+    image_name = '2007_000364.jpg'
     image = Image.open(image_name).convert('RGB')
     
     # Preprocess the image
@@ -144,9 +144,11 @@ def test_unicl_classification(cfg, args):
     # shape = [global_batch_size, global_batch_size]
     logits_per_image = logits_per_image.softmax(dim=-1)
     
-    # print(logits_per_image)
+    print(logits_per_image)
 
-    score = logits_per_image[0, torch.argmax(logits_per_image)]
+    # score = logits_per_image[0, torch.argmax(logits_per_image)]
+    score = logits_per_image[0, 13]
+    print(score)
     # score = logits_per_image.sum()
     model.zero_grad()
     score.backward()
@@ -175,7 +177,7 @@ def test_unicl_classification(cfg, args):
     # Convert GradCAM map to a numpy array
     gradcam_map_np = gradcam_map.cpu().detach().numpy()[0, 0].astype(np.float32)
     
-    print(gradcam_map_np)
+    # print(gradcam_map_np)
     
     # Resize the GradCAM heatmap to match the original image dimensions
     heatmap = cv2.resize(gradcam_map_np, (image.width, image.height))
